@@ -1,5 +1,3 @@
-Sure! Here's the README formatted as a Markdown code block that you can directly save as `README.md`:
-
 # Slack Leave Management App
 
 A Slack-integrated leave management application that allows employees to submit leave requests, provides managers with approval/decline/discussion options, and notifies HR. Built with **Python**, **Slack Bolt**, and **Flask**.
