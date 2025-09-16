@@ -51,6 +51,7 @@ The app also enforces organizational policies like notice periods, leave balance
   - HR channel is notified of all decisions.  
   - Notion tasks overlapping with leave dates are highlighted.  
   - Provides visibility into project timelines and dependencies.
+  - Automatically marks overlapping Notion tasks with the employee's leave status when leave is approved.
 
 - **Additional Commands**  
   - `/leave_balance` → Check your current leave balance.  
@@ -104,6 +105,7 @@ The app also enforces organizational policies like notice periods, leave balance
 | `NOTION_API_KEY`       | Integration key for Notion API              |
 | `NOTION_TASKS_DB_ID`   | Notion database ID for tasks                |
 
+* Need Notion "leave" property (checkbox type) in the Notion Tasks DB schema
 Example `.env`:
 
 ```env
@@ -156,7 +158,8 @@ slack-leave-app/
   - Advanced validations (notice period, sick leave rules, weekends).  
   - Notion integration for deadline/task overlap detection.  
   - Manager workflow with Approve/Decline/Discuss options.  
-  - HR notified with detailed project/task context.  
+  - HR notified with detailed project/task context.
+  - Automatic updating of Notion tasks' "leave" checkbox property when leave is approved, providing real-time visibility of employee leave status within Notion tasks.
 
 ---
 
