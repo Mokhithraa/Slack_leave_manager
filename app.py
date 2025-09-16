@@ -553,15 +553,25 @@ def leave_balance_command(ack, body, client, logger):
     except SlackApiError as e:
         logger.error(f"Failed to send leave balance DM: {e}")
 
-#change here
+def set_user_tasks_on_leave(notion_client, tasks):
+    for task in tasks:
+        page_id = task['id']
+        try:
+            notion_client.pages.update(
+                page_id=page_id,
+                properties={
+                    "Leave": {"checkbox": True}
+                }
+            )
+        except Exception as e:
+            print(f"Failed to update leave status for Notion page {page_id}: {e}")
+
+
 @app.action("approve_button")
 @app.action("decline_button")
 def handle_final_decision(ack, body, client, logger):
     ack()
     action_value = body["actions"][0]["value"]
-    
-    # Split the button value and get parameters
-    # Expect button value format: user_id|decision|requested_days|leave_type_id
     parts = action_value.split("|")
     user_id = parts[0]
     decision = parts[1]
@@ -590,7 +600,6 @@ def handle_final_decision(ack, body, client, logger):
 
     # Fetch overlapping tasks for HR notification
     with flask_app.app_context():
-        # Fetch leave request dates for the user and type (last pending or approved)
         leave_request = LeaveRequest.query.filter_by(user_id=user_id, leave_type_id=leave_type_id).order_by(LeaveRequest.id.desc()).first()
         if leave_request:
             start_dt = leave_request.start_date
@@ -646,8 +655,23 @@ def handle_final_decision(ack, body, client, logger):
             if user_balance_record:
                 user_balance_record.leave_balance = max(0, user_balance_record.leave_balance - requested_days)
                 db.session.commit()
-
-#over over
+            if start_dt and end_dt:
+                notion_client = NotionClient(auth=NOTION_API_KEY)
+                slack_to_notion_user_map = {
+                    "U09DHCLQK8A": "26bd872b-594c-81cd-8aa1-0002dc180e8b"  # example mapping
+                    # add your actual mappings here
+                }
+                notion_user_id = slack_to_notion_user_map.get(user_id)
+                if notion_user_id:
+                    tasks = fetch_user_tasks_with_deadlines(
+                        notion_client,
+                        NOTION_TASKS_DB_ID,
+                        notion_user_id,
+                        start_dt,
+                        end_dt
+                    )
+                    if tasks:
+                        set_user_tasks_on_leave(notion_client, tasks)
 
 @app.action("discuss_button")
 def handle_discuss_action(ack, body, client, logger):
