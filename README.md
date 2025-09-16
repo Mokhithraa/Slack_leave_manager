@@ -1,6 +1,6 @@
 # Slack Leave Management App
 
-A Slack-integrated leave management application that allows employees to submit leave requests, provides managers with approval/decline/discussion options, and notifies HR. Built with **Python**, **Slack Bolt**, and **Flask**.
+A Slack-integrated leave management system that allows employees to submit leave requests, provides managers with approval/decline/discussion options, tracks leave balances, and notifies HR with task overlap details from Notion. Built with **Python**, **Slack Bolt**, **Flask**, **SQLAlchemy**, and **Notion API**.
 
 ---
 
@@ -15,37 +15,57 @@ A Slack-integrated leave management application that allows employees to submit 
 | [Environment Variables](#environment-variables) | Required environment variables |
 | [Usage](#usage) | How to use the Slack commands and features |
 | [Project Structure](#project-structure) | File and folder structure explanation |
+| [Project Evolution](#project-evolution) | Improvements made from the initial version |
 | [Contributing](#contributing) | Guidelines for contributing |
-
 
 ---
 
 ## Overview
 
-The **Slack Leave Management App** simplifies leave requests for employees and streamlines approvals for managers. Users can submit leave requests via a Slack modal, specify dates and reasons, optionally provide proof, and get instant notifications about the request status. Managers can approve, decline, or request discussion before a decision, and HR is kept informed of all leave activity.
+The **Slack Leave Management App** simplifies employee leave requests and streamlines approvals for managers and HR.  
+Employees can request leave via Slack slash commands, managers can take action with a single click, and HR gets automated notifications with task and project conflicts pulled directly from Notion.  
+The app also enforces organizational policies like notice periods, leave balances, and validation against weekends or holidays.
 
 ---
 
 ## Features
 
-- Submit leave requests directly in Slack using `/leave_app` command.
-- Select leave type (Vacation, Sick Leave, Personal, Other).
-- Choose start and end dates using a date picker.
-- Optional submission of proof details for leave requests.
-- Manager receives leave requests with **Approve**, **Decline**, and **Discuss** options.
-- Users can re-request leave after discussion with the manager.
-- Automatic leave balance tracking.
-- Notifications sent to HR on all leave decisions.
-- Web interface powered by Flask for running the app.
+- **Leave Requests**  
+  - `/applyforleave` opens a modal to request leave.  
+  - Specify leave type (Vacation, Sick Leave, Personal, Other).  
+  - Choose start and end dates with a date picker.  
+  - Add a reason and optional proof details.  
+  - Smart validations:  
+    - Minimum notice period checks.  
+    - Sick leave allowed with shorter notice.  
+    - Weekends/holidays excluded.  
+    - Leave balance verification.
+
+- **Manager Workflow**  
+  - Requests sent directly to the manager via Slack DM.  
+  - One-click options: **Approve**, **Decline**, or **Discuss**.  
+  - Discussion state allows re-submission after clarification.  
+  - Approved/declined leaves automatically update balances.
+
+- **HR Notifications**  
+  - HR channel is notified of all decisions.  
+  - Notion tasks overlapping with leave dates are highlighted.  
+  - Provides visibility into project timelines and dependencies.
+
+- **Additional Commands**  
+  - `/leave_balance` → Check your current leave balance.  
+  - `/whos_away` → View employees on leave in the next 7 days, 30 days, or current month.  
 
 ---
 
 ## Tech Stack
 
 - **Python 3.9+**
-- **Slack Bolt** for Slack app integration
-- **Flask** for the web server and Slack event handling
-- **Slack API** for messaging, modals, and interactions
+- **Slack Bolt** → Slack integration (events, commands, modals)
+- **Flask** → Web server for handling Slack requests
+- **SQLAlchemy** → Persistent database (SQLite/Postgres)
+- **Notion API** → Task and project tracking integration
+- **Slack API** → Messaging, modals, and user interactions
 
 ---
 
@@ -56,13 +76,10 @@ The **Slack Leave Management App** simplifies leave requests for employees and s
    ```bash
    git clone https://github.com/yourusername/slack-leave-app.git
    cd slack-leave-app
-
 2. **Install dependencies:**
 
    ```bash
    pip install -r requirements.txt
-   ```
-
 3. **Set environment variables:**
 
    See [Environment Variables](#environment-variables) below.
@@ -71,16 +88,10 @@ The **Slack Leave Management App** simplifies leave requests for employees and s
 
    ```bash
    python main.py
-   ```
-
 5. **Expose the server for Slack events (optional for local testing):**
 
    ```bash
    ngrok http 8000
-   ```
-
----
-
 ## Environment Variables
 
 | Variable               | Description                                 |
@@ -89,6 +100,9 @@ The **Slack Leave Management App** simplifies leave requests for employees and s
 | `SLACK_SIGNING_SECRET` | Signing secret for verifying Slack requests |
 | `MANAGER_USER_ID`      | Slack user ID of the manager                |
 | `HR_CHANNEL_ID`        | Slack channel ID for HR notifications       |
+| `DATABASE_URL`         | SQLAlchemy database connection string       |
+| `NOTION_API_KEY`       | Integration key for Notion API              |
+| `NOTION_TASKS_DB_ID`   | Notion database ID for tasks                |
 
 Example `.env`:
 
@@ -97,50 +111,59 @@ SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-signing-secret
 MANAGER_USER_ID=U09E2SQFTLY
 HR_CHANNEL_ID=U09DJQKJH1R
+DATABASE_URL=sqlite:///leave_app.db
+NOTION_API_KEY=secret_xxxxx
+NOTION_TASKS_DB_ID=xxxxxxxxxxxxxxxxxxxx
 ```
-
 ---
-
 ## Usage
 
-1. In Slack, type `/leave_app` to open the leave request modal.
+1. In Slack, type `/applyforleave` to open the leave request modal.
 2. Fill in:
-
-   * Reason for leave
-   * Start and end dates
-   * Optional proof details
-3. Submit the request.
-4. Manager receives the request with **Approve**, **Decline**, or **Discuss** buttons.
-5. HR gets notified on final decision.
-6. If discussion is needed, users can **Re-request** leave after resolving concerns.
+   - Leave type  
+   - Reason for leave  
+   - Start and end dates  
+   - Optional proof details  
+3. Submit the request.  
+4. Manager receives a DM with **Approve**, **Decline**, or **Discuss** options.  
+5. HR is notified of all final decisions, with overlapping Notion tasks flagged.  
+6. Use `/leave_balance` to check your remaining leaves.  
+7. Use `/whos_away` to see who is on leave.  
 
 ---
-
 ## Project Structure
 
 ```
 slack-leave-app/
-├── main.py             # Main Flask & Slack app code
+├── main.py             # Contains Slack commands, action handlers, and Flask routes.
 ├── requirements.txt    # Python dependencies
 ├── README.md           # Project documentation
-└── .env                # Environment variables (not committed)
+└── .env                # Environment variables (ignored in git)
 ```
 
-* **main.py**: Contains all Slack command, modal, action handlers, and Flask routes.
-* **USER\_LEAVE\_BALANCES**: Mock data store for leave balances.
-* **USER\_DISCUSSION\_STATE**: Tracks if a user has discussed leave before re-request.
+---
+
+## Project Evolution
+
+- **Initial Version:**  
+  - Basic leave request/approval system.  
+  - Mock balances stored in-memory.  
+  - Single `/leave_app` command.  
+
+- **Current Version:**  
+  - SQLAlchemy-backed persistent storage.  
+  - Multiple slash commands: `/applyforleave`, `/leave_balance`, `/whos_away`.  
+  - Advanced validations (notice period, sick leave rules, weekends).  
+  - Notion integration for deadline/task overlap detection.  
+  - Manager workflow with Approve/Decline/Discuss options.  
+  - HR notified with detailed project/task context.  
 
 ---
 
 ## Contributing
 
-1. Fork the repository.
-2. Create a new branch: `git checkout -b feature/your-feature`.
-3. Make your changes and commit: `git commit -m "Add feature"`.
-4. Push to your branch: `git push origin feature/your-feature`.
-5. Open a Pull Request for review.
+1. Fork the repository.  
+2. Create a new branch:  
+   ```bash
+   git checkout -b feature/your-feature
 
-
-```
-Do you want me to add that?
-```
